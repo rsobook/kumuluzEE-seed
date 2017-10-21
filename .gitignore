@@ -3,6 +3,7 @@ coverage
 build
 node_modules
 stats.json
+gradle.properties
 
 # Cruft
 .DS_Store
