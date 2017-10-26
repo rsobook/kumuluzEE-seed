@@ -37,7 +37,7 @@ repositories {
 
 dependencies {
 
-    compile group: 'javax', name: 'javaee-api', version: '7.0'
+    compile group: 'si.fri.rsobook', name: 'core', version: '1.0'
 
     compile group: "com.kumuluz.ee", name: 'kumuluzee-core', version: '2.4.1'
     compile group: "com.kumuluz.ee", name: 'kumuluzee-servlet-jetty', version: '2.4.1'
@@ -47,10 +47,8 @@ dependencies {
 
     compile group: 'org.postgresql', name: 'postgresql', version: '42.1.1'
 
-    compile group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-hibernate4', version: '2.8.8'
     compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.12'
 
-    compile group: 'si.fri.rsobook', name: 'core', version: '1.0'
 
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
@@ -60,43 +58,31 @@ dependencies {
  * KUMULUZEE TASKS
  */
 
-task copyCompileDependencies() {
-    group 'kumuluzee'
-    def dependencyDir = project.buildDir.name + "/kumuluzee/dependency"
-    doLast {
-        if(!file(dependencyDir).exists()){
-            println "Copying all external dependencies."
-            copy {
-                from configurations.compile
-                into dependencyDir
-            }
-        }
-    }
-}
-
-task copyCompileClasses(type: Copy) {
-    group 'kumuluzee'
-    from "src/main/resources"
-    from "build/classes/java/main"
-    into project.buildDir.name + "/kumuluzee/classes"
-}
-
-task buildKumuluzEE {
+task buildKumuluzEE(type: Jar){
     group 'kumuluzee'
     dependsOn assemble
-    dependsOn copyCompileDependencies
-    dependsOn copyCompileClasses
-    copyCompileDependencies.mustRunAfter assemble
-    copyCompileClasses.mustRunAfter assemble
+
+    into('lib') { from configurations.compile }
+    from project.projectDir.path + "/build-dependency"
+    from "src/main/resources"
+    from "build/classes/java/main"
+
+    manifest { attributes("Main-Class": "com.kumuluz.ee.loader.EeBootLoader") }
+
+    archivesBaseName = project.name
+    destinationDir = file("$rootDir/build/kumuluzee")
 }
 
 task runKumuluzEE(type: JavaExec) {
     group 'kumuluzee'
     dependsOn buildKumuluzEE
-    main = 'com.kumuluz.ee.EeApplication'
-    classpath = files(project.buildDir.name + "/kumuluzee/classes") + fileTree(dir: project.buildDir.name + "/kumuluzee/dependency")
-    environment('PORT', '7080')
+
+    environment('PORT', '8080')
+
+    main = "-jar"
+    args buildKumuluzEE.archivePath.path
 }
+
 
 /**
  * DOCKER TASKS
@@ -120,11 +106,11 @@ task dockerfileCreate(type: Dockerfile) {
     from 'openjdk:8-jdk'
     maintainer 'Jan Gasperlin "jg1724@student.uni-lj.si"'
     environmentVariable("PORT", port)
+    environmentVariable("JAR", buildKumuluzEE.archiveName)
     exposePort {
         port
     }
-    addFile("classes", "/usr/local/bin/kumuluzee/classes")
-    addFile("dependency", "/usr/local/bin/kumuluzee/dependency")
+    addFile(buildKumuluzEE.archiveName, "/usr/local/bin/kumuluzee/")
     addFile("run.sh", "/usr/local/bin/kumuluzee")
     defaultCommand('/bin/bash','/usr/local/bin/kumuluzee/run.sh', 'start')
 }
