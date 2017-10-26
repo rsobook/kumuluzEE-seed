@@ -1,15 +1,26 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+
+    dependencies {
+        classpath 'com.bmuschko:gradle-docker-plugin:3.2.0'
+    }
+}
+
 group 'si.fri.rsobook'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
 apply plugin: 'idea'
+apply plugin: 'com.bmuschko.docker-remote-api'
 
 sourceCompatibility = 1.8
 
-
 ext {
-    nexusUsername = System.getProperty("NEXUS_USERNAME")
-    nexusPassword = System.getProperty("NEXUS_PASSWORD")
+    dockerImageName = String.format("%s/%s", DOCKER_HUB_USER, project.name)
+    dockerImageTag = String.format("%s:%s", dockerImageName, version)
+    dockerContainerName = String.format("%s", project.name)
 }
 
 repositories {
@@ -17,8 +28,8 @@ repositories {
     maven {
         url 'https://box.kisek.si/nexus/repository/maven-releases' //'http://localhost:8081/repository/maven-releases/'
         credentials {
-            username nexusUsername
-            password nexusPassword
+            username NEXUS_USERNAME
+            password NEXUS_PASSWORD
         }
     }
 }
@@ -44,7 +55,12 @@ dependencies {
 }
 
 
+/**
+ * KUMULUZEE TASKS
+ */
+
 task copyCompileDependencies() {
+    group 'kumuluzee'
     def dependencyDir = project.buildDir.name + "/kumuluzee/dependency"
     doLast {
         if(!file(dependencyDir).exists()){
@@ -58,12 +74,14 @@ task copyCompileDependencies() {
 }
 
 task copyCompileClasses(type: Copy) {
+    group 'kumuluzee'
     from "src/main/resources"
     from "build/classes/java/main"
     into project.buildDir.name + "/kumuluzee/classes"
 }
 
 task buildKumuluzEE {
+    group 'kumuluzee'
     dependsOn assemble
     dependsOn copyCompileDependencies
     dependsOn copyCompileClasses
@@ -72,9 +90,97 @@ task buildKumuluzEE {
 }
 
 task runKumuluzEE(type: JavaExec) {
+    group 'kumuluzee'
     dependsOn buildKumuluzEE
     main = 'com.kumuluz.ee.EeApplication'
     classpath = files(project.buildDir.name + "/kumuluzee/classes") + fileTree(dir: project.buildDir.name + "/kumuluzee/dependency")
     environment('PORT', '7080')
 }
 
+/**
+ * DOCKER TASKS
+ */
+
+import com.bmuschko.gradle.docker.tasks.container.*
+import com.bmuschko.gradle.docker.tasks.image.*
+
+docker {
+    registryCredentials {
+        url = 'https://hub.docker.com/'
+        email = DOCKER_HUB_EMAIL
+        password = DOCKER_HUB_PASSWORD
+        username = DOCKER_HUB_USER
+    }
+}
+
+task dockerfileCreate(type: Dockerfile) {
+    group 'docker'
+    destFile = project.file('build/kumuluzee/Dockerfile')
+    from 'openjdk:8-jdk'
+    maintainer 'Jan Gasperlin "jg1724@student.uni-lj.si"'
+    environmentVariable("PORT", "8080")
+    addFile("classes", "/usr/local/bin/kumuluzee/classes")
+    addFile("dependency", "/usr/local/bin/kumuluzee/dependency")
+    addFile("run.sh", "/usr/local/bin/kumuluzee")
+    defaultCommand('/bin/bash','/usr/local/bin/kumuluzee/run.sh', 'start')
+}
+
+task dockerfileCopyScript(type: Copy){
+    group 'docker'
+    from "run.sh"
+    into dockerfileCreate.destFile.parentFile
+}
+
+task imageBuild(type: DockerBuildImage) {
+    group 'docker'
+    dependsOn dockerfileCreate
+    dependsOn dockerfileCopyScript
+    dependsOn buildKumuluzEE
+    inputDir = dockerfileCreate.destFile.parentFile
+    tag = dockerImageTag
+    //noCache = true
+}
+
+task imageRemove(type: DockerRemoveImage) {
+    group 'docker'
+    imageId dockerImageTag
+}
+
+task imagePushToDockerHub(type: DockerPushImage){
+    group 'docker'
+    imageName = dockerImageTag
+    tag = version
+}
+
+task containerCreate(type: DockerCreateContainer) {
+    group 'docker'
+    targetImageId {
+        dockerImageTag
+    }
+    containerName = dockerContainerName
+    portBindings = ['8080:8080']
+    onError {
+        error -> println error
+    }
+}
+
+task containerStart(type: DockerStartContainer) {
+    group 'docker'
+    targetContainerId {
+        dockerContainerName
+    }
+}
+
+task containerStop(type: DockerStopContainer) {
+    group 'docker'
+    targetContainerId {
+        dockerContainerName
+    }
+}
+
+task containerRemove(type: DockerRemoveContainer) {
+    group 'docker'
+    targetContainerId {
+        dockerContainerName
+    }
+}
