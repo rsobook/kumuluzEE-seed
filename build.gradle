@@ -63,7 +63,7 @@ task buildKumuluzEE(type: Jar){
     dependsOn assemble
 
     into('lib') { from configurations.compile }
-    from project.projectDir.path + "/build-dependency"
+    from project.projectDir.path + "/build-dependency/jar"
     from "src/main/resources"
     from "build/classes/java/main"
 
@@ -111,13 +111,15 @@ task dockerfileCreate(type: Dockerfile) {
         port
     }
     addFile(buildKumuluzEE.archiveName, "/usr/local/bin/kumuluzee/")
+    //addFile("config.yaml", "/usr/local/bin/kumuluzee")
     addFile("run.sh", "/usr/local/bin/kumuluzee")
     defaultCommand('/bin/bash','/usr/local/bin/kumuluzee/run.sh', 'start')
 }
 
 task dockerfileCopyScript(type: Copy){
     group 'docker'
-    from "run.sh"
+    from "/build-dependency/run.sh"
+    from "/build-dependency/config.yaml"
     into dockerfileCreate.destFile.parentFile
 }
 
