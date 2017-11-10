@@ -22,7 +22,7 @@ ext {
     dockerHubEmail =  project.hasProperty('DOCKER_HUB_EMAIL') ? DOCKER_HUB_EMAIL : System.getenv('DOCKER_HUB_EMAIL')
     dockerHubPassword =  project.hasProperty('DOCKER_HUB_PASSWORD') ? DOCKER_HUB_PASSWORD : System.getenv('DOCKER_HUB_PASSWORD')
 
-    port = "5006"
+    port = "8080" // set new port unique for docker
     dockerHostname = "chatrelay.rsobook.fri.si"
     dockerImageName = String.format("%s/%s", dockerHubUser, project.name)
     dockerImageTag = String.format("%s:%s", dockerImageName, version)
