@@ -47,6 +47,8 @@ dependencies {
     compile group: "com.kumuluz.ee", name: 'kumuluzee-jpa-hibernate', version: '2.4.1'
     compile group: "com.kumuluz.ee", name: 'kumuluzee-cdi-weld', version: '2.4.1'
 
+    compile group: "com.kumuluz.ee.config", name: "kumuluzee-config-etcd", version: '1.0.0'
+
     compile group: 'org.postgresql', name: 'postgresql', version: '42.1.1'
 
     compile group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.12'
@@ -106,13 +108,19 @@ task dockerfileCreate(type: Dockerfile) {
     destFile = project.file('build/kumuluzee/Dockerfile')
     from 'openjdk:8-jdk'
     maintainer 'Jan Gasperlin "jg1724@student.uni-lj.si"'
-    environmentVariable("PORT", port)
+
     environmentVariable("JAR", buildKumuluzEE.archiveName)
+    environmentVariable("PORT", port)
+
+    /*environmentVariable("KUMULUZEE_DATASOURCES0_CONNECTIONURL", 'jdbc:postgresql://microservice-database:5432/rsobook-user')
+    environmentVariable("KUMULUZEE_DATASOURCES0_USERNAME", 'postgres')
+    environmentVariable("KUMULUZEE_DATASOURCES0_PASSWORD", 'root')*/
+
     exposePort {
         port
     }
+
     addFile(buildKumuluzEE.archiveName, "/usr/local/bin/kumuluzee/")
-    //addFile("config.yaml", "/usr/local/bin/kumuluzee")
     addFile("run.sh", "/usr/local/bin/kumuluzee")
     defaultCommand('/bin/bash','/usr/local/bin/kumuluzee/run.sh', 'start')
 }
