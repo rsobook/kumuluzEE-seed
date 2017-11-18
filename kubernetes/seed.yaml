@@ -1,0 +1,26 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: ms-seed
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ms-seed
+    spec:
+      containers:
+        - image: rsobook/ms-seed:1.0.0
+          name: ms-user
+          env:
+            - name: PORT
+              value: '80'
+            - name: KUMULUZEE_DISCOVERY_ETCD_HOSTS
+              value: http://ms-etcd:2379
+            - name: KUMULUZEE_CONFIG_ETCD_HOSTS
+              value: http://ms-etcd:2379
+            - name: KUMULUZEE_DATASOURCES0_CONNECTIONURL
+              value: jdbc:postgresql://ms-database:5432/rsobook-seed
+          ports:
+          - containerPort: 80
+            protocol: TCP

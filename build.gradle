@@ -115,13 +115,12 @@ docker {
 task dockerfileCreate(type: Dockerfile) {
     group 'docker'
     destFile = project.file('build/kumuluzee/Dockerfile')
-    from 'openjdk:8-jdk'
+    from 'openjdk:8-jre-alpine' //'openjdk:8-jdk'
     maintainer 'Jan Gasperlin "jg1724@student.uni-lj.si"'
 
-    environmentVariable("JAR", buildKumuluzEE.archiveName)
     environmentVariable("PORT", port)
 
-    /*environmentVariable("KUMULUZEE_DATASOURCES0_CONNECTIONURL", 'jdbc:postgresql://microservice-database:5432/rsobook-user')
+    /*environmentVariable("KUMULUZEE_DATASOURCES0_CONNECTIONURL", 'jdbc:postgresql://microservice-database:5432/rsobook-seed')
     environmentVariable("KUMULUZEE_DATASOURCES0_USERNAME", 'postgres')
     environmentVariable("KUMULUZEE_DATASOURCES0_PASSWORD", 'root')*/
 
@@ -130,8 +129,7 @@ task dockerfileCreate(type: Dockerfile) {
     }
 
     addFile(buildKumuluzEE.archiveName, "/usr/local/bin/kumuluzee/")
-    addFile("run.sh", "/usr/local/bin/kumuluzee")
-    defaultCommand('/bin/bash','/usr/local/bin/kumuluzee/run.sh', 'start')
+    defaultCommand("java", "-jar", "/usr/local/bin/kumuluzee/" + buildKumuluzEE.archiveName)
 }
 
 task dockerfileCopyScript(type: Copy){
@@ -195,7 +193,7 @@ task containerCreate(type: DockerCreateContainer) {
         dockerImageTag
     }
     containerName = dockerContainerName
-    portBindings = [String.format("%s:%s", port, port)]
+    portBindings = [String.format("5%s:%s", port, port)]
     hostName = dockerHostname
     network = 'rsonetwork'
 }
